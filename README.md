@@ -1,2 +1,3 @@
-# Apple-Music-Automation
-Sort your songs into playlists by using AI
+# Spotify-Automation
+
+Sort your songs into playlists using AI
