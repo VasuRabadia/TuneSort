@@ -1,0 +1,63 @@
+:root {
+  --bg-main: #d8d8d8;
+  --text-color: #000000;
+  --text-color-light: #ffffff;
+  --bg-primary: #504fd2;
+  --bg-primary-hover: #2b2a69;
+  --bg-primary-selected: #0f0e23;
+  --bg-primary-selected-hover: #2b2a69;
+  --border-primary: #000000;
+}
+
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-color) !important;
+}
+
+button {
+  border-radius: 10px !important;
+  background-color: var(--bg-primary) !important;
+  color: var(--text-color-light) !important;
+  text-align: center !important;
+  transition: background-color 0.3s ease !important;
+}
+
+button:hover {
+  background-color: var(--bg-primary-hover) !important;
+}
+
+.dropdown-menu {
+  padding: 0px !important;
+  border: 1px !important;
+  border-color: var(--border-primary) !important;
+  border-style: solid !important;
+}
+
+.dropdown-menu .dropdown-item {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-color-light) !important;
+}
+
+.dropdown-menu .dropdown-item:hover {
+  background-color: var(--bg-primary-hover) !important;
+  color: var(--text-color-light) !important;
+}
+
+.dropdown-menu .selected {
+  background-color: var(--bg-primary-selected) !important;
+  color: var(--text-color-light) !important;
+}
+
+.dropdown-menu .selected:hover {
+  background-color: var(--bg-primary-selected-hover) !important;
+  color: var(--text-color-light) !important;
+}
+
+.show {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-color-light) !important;
+}
+
+.filter-option {
+  padding-right: 5px !important;
+}
