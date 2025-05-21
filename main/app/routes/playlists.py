@@ -1,4 +1,4 @@
-from flask import Blueprint, session, jsonify
+from flask import Blueprint, session, jsonify, render_template, request, redirect
 from dotenv import load_dotenv
 import requests
 import os
@@ -13,7 +13,7 @@ CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 REDIRECT_URI = os.getenv("REDIRECT_URI")
 
 
-@playlists_bp.route("/playlists")
+@playlists_bp.route("/playlists", methods=["GET", "POST"])
 def get_playlists():
     access_token = session.get("access_token")
     if not access_token:
@@ -33,7 +33,35 @@ def get_playlists():
         )
 
     playlists_data = response.json()
-    with open("main/data/playlists.json", "w", encoding="utf-8") as f:
-        json.dump(playlists_data, f, ensure_ascii=False, indent=2)
+    with open("main/data/playlists.json", "w") as f:
+        json.dump(playlists_data, f)
+    playlists = [{"id": "1", "name": "Liked Songs"}]
+    for pl in playlists_data["items"]:
+        if pl.get("type") == "playlist":
+            playlists.append({"id": pl.get("id"), "name": pl.get("name")})
 
-    return jsonify(playlists_data)
+    input_options = playlists.copy()
+    output_options = playlists.copy()
+    output_options.remove({"id": "1", "name": "Liked Songs"})
+
+    if request.method == "POST":
+        selected_input = request.form.getlist("input[]")
+        selected_output = request.form.getlist("output[]")
+        user_response = requests.get("https://api.spotify.com/v1/me", headers=headers)
+        if user_response.status_code != 200:
+            return {"error": "Failed to fetch user info"}, user_response.status_code
+        user_id = user_response.json().get("id")
+        if not user_id:
+            return {"error": "User ID not found in response"}, 500
+        spotify_url = f"https://open.spotify.com/user/{user_id}/playlists"
+        return redirect(spotify_url)
+    else:
+        selected_input = ["1"]
+        selected_output = []
+        return render_template(
+            "index.html",
+            input_options=input_options,
+            output_options=output_options,
+            selected_input=selected_input,
+            selected_output=selected_output,
+        )
