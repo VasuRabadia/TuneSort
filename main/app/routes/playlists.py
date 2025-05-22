@@ -33,12 +33,14 @@ def get_playlists():
         )
 
     playlists_data = response.json()
-    with open("main/data/playlists.json", "w") as f:
-        json.dump(playlists_data, f)
+    # with open("main/data/playlists.json", "w") as f:
+    #     json.dump(playlists_data, f)
     playlists = [{"id": "1", "name": "Liked Songs"}]
     for pl in playlists_data["items"]:
         if pl.get("type") == "playlist":
             playlists.append({"id": pl.get("id"), "name": pl.get("name")})
+    playlist_map = {pl["id"]: pl["name"] for pl in playlists}
+    session["playlist_map"] = playlist_map
 
     input_options = playlists.copy()
     output_options = playlists.copy()
@@ -53,8 +55,18 @@ def get_playlists():
         user_id = user_response.json().get("id")
         if not user_id:
             return {"error": "User ID not found in response"}, 500
-        spotify_url = f"https://open.spotify.com/user/{user_id}/playlists"
-        return redirect(spotify_url)
+        all_tracks = []
+        for pid in selected_input:
+            if pid == "1":
+                playlist_url = request.host_url + "playlist/liked/tracks"
+            else:
+                playlist_url = request.host_url + f"playlist/{pid}/tracks"
+            all_tracks.append(
+                requests.get(playlist_url, cookies=request.cookies).json()
+            )
+        session["selected_output"] = selected_output
+        session["all_tracks"] = all_tracks
+        return redirect("/sort")
     else:
         selected_input = ["1"]
         selected_output = []

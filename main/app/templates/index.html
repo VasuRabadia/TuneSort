@@ -21,9 +21,10 @@
   </head>
   <body>
     <div class="container py-5">
+      <div class="title display-1 py-5 text-center fw-bold">TuneSort</div>
       <form method="POST" action="/playlists">
         <!-- Input Multi-Select -->
-        <label for="input-playlists" class="form-label w-auto fs-4"
+        <label for="input-playlists" class="form-label w-auto fs-2 fw-bold"
           >Select playlists to choose tracks from</label
         >
         <br />
@@ -53,7 +54,9 @@
 
         <!-- Output Multi-Select -->
         <br />
-        <label for="output-playlists" class="form-label mt-4 w-auto fs-4"
+        <label
+          for="output-playlists"
+          class="form-label mt-4 w-auto fs-2 fw-bold"
           >Select playlists to auto populate</label
         >
         <br />
@@ -105,7 +108,7 @@
       document.addEventListener("DOMContentLoaded", function () {
         const buttons = document.querySelectorAll("button");
         buttons.forEach((btn) => {
-          btn.classList.add("border", "border-2", "border-dark");
+          btn.classList.add("border", "border-2", "border-dark", "btn-grad");
         });
       });
     </script>
