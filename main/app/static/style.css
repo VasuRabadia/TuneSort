@@ -10,20 +10,42 @@
 }
 
 body {
-  background-color: var(--bg-main) !important;
-  color: var(--text-color) !important;
+  height: 100vh;
+  width: 100vw;
+  background-image: linear-gradient(
+    to top,
+    #d5dee7 0%,
+    #ffafbd 0%,
+    #c9ffbf 100%
+  );
 }
 
-button {
-  border-radius: 10px !important;
-  background-color: var(--bg-primary) !important;
-  color: var(--text-color-light) !important;
-  text-align: center !important;
-  transition: background-color 0.3s ease !important;
+.btn-grad {
+  background-image: linear-gradient(
+    to right,
+    #000000 0%,
+    #53346d 51%,
+    #000000 100%
+  );
 }
 
-button:hover {
-  background-color: var(--bg-primary-hover) !important;
+.btn-grad {
+  margin: 10px;
+  padding: 15px 45px;
+  text-align: center;
+  text-transform: uppercase;
+  transition: 0.5s;
+  background-size: 200% auto;
+  color: white;
+  box-shadow: 0 0 20px #eee;
+  border-radius: 10px;
+  display: block;
+}
+
+.btn-grad:hover {
+  background-position: right center; /* change the direction of the change here */
+  color: #fff;
+  text-decoration: none;
 }
 
 .dropdown-menu {
