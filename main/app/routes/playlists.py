@@ -57,16 +57,14 @@ def get_playlists():
             return {"error": "User ID not found in response"}, 500
         all_tracks = []
         for pid in selected_input:
-            if pid == "1":
-                playlist_url = request.host_url + "playlist/liked/tracks"
-            else:
-                playlist_url = request.host_url + f"playlist/{pid}/tracks"
+            playlist_url = request.host_url + f"playlist/{pid}/tracks"
             all_tracks.append(
                 requests.get(playlist_url, cookies=request.cookies).json()
             )
         session["selected_output"] = selected_output
         session["all_tracks"] = all_tracks
-        return redirect("/sort")
+        # return redirect("/sort")
+        return redirect(f"/playlist/{selected_input[0]}/tracks")
     else:
         selected_input = ["1"]
         selected_output = []
