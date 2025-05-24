@@ -1,4 +1,4 @@
-from flask import Blueprint, session, jsonify
+from flask import Blueprint, session, jsonify, request
 import requests
 
 tracks_bp = Blueprint("playlist_tracks", __name__)
@@ -11,7 +11,10 @@ def get_playlist_tracks(playlist_id):
         return jsonify({"error": "Access token not found. Authorize via /home"}), 401
 
     headers = {"Authorization": f"Bearer {access_token}"}
-    url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks?limit=100"
+    if playlist_id == "1":
+        url = f"https://api.spotify.com/v1/me/tracks?limit=50"
+    else:
+        url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks?limit=100"
 
     all_tracks = []
 
@@ -37,6 +40,7 @@ def get_playlist_tracks(playlist_id):
     for item in all_tracks:
         track = item.get("track")
         if track:
+            track_id = track.get("id")
             track_info.append(
                 {
                     "name": track.get("name"),
