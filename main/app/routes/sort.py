@@ -69,75 +69,82 @@ def sort_tracks():
             track_name = tr["name"]
             track_artists = tr["artist"]
 
-            track = track_name + " by " + ", ".join(track_artists)
+            if track_name != "":
 
-            print({"track_id": track_id, "track": track})
+                track = track_name + " by " + ", ".join(track_artists)
 
-            prompt = (
-                f"You are an expert music classifier.\n\n"
-                f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {playlists}.\n\n'
-                f"Instructions:\n"
-                f'1. Each playlist name may include genre (e.g., "Pop", "HipHop"), mood (e.g., "Sad", "Happy", "Emotional"), language (e.g., "English", "Hindi", "Punjabi"), or context (e.g., "Party", "Car", "Workout", "Gaming").\n'
-                f'2. Some playlists have compound names (e.g., "Hindi-Party", "Sad-Car", "English-Dance"). These mean the song must satisfy **all parts** of the name. For example:\n'
-                f'   - "Hindi-Party" means the song must be **both in Hindi** and **suitable for parties**.\n'
-                f'   - "Sad-Car" means the song must be **sad** and **appropriate to play in a car**.\n'
-                f"3. Use your best understanding of the song’s genre, mood, lyrics, language, popularity, and energy.\n"
-                f"4. Only select playlists that the song fits **perfectly and clearly**. Do not guess or loosely match.\n"
-                f"5. If the song does not belong in any playlist, return an empty list: [].\n\n"
-                f"Response Format:\n"
-                f"Return only a valid Python list of playlist names, like this:\n"
-                f'["Pop", "Romantic", "English-Dance"]\n'
-                f"Do not include any explanation, comments, or extra text.\n\n"
-                f"Be accurate. Take your time. The goal is 100% precision."
-            )
+                print({"track_id": track_id, "track": track})
 
-            try:
-                response_1_5_flash = model_1_5_flash.generate_content(prompt)
-            except Exception as e:
-                print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
-                response_1_5_flash = DummyResponse()
+                prompt = (
+                    f"You are an expert music classifier.\n\n"
+                    f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {playlists}.\n\n'
+                    f"Instructions:\n"
+                    f'1. Each playlist name may include genre (e.g., "Pop", "HipHop"), mood (e.g., "Sad", "Happy", "Emotional"), language (e.g., "English", "Hindi", "Punjabi"), or context (e.g., "Party", "Car", "Workout", "Gaming").\n'
+                    f'2. Some playlists have compound names (e.g., "Hindi-Party", "Sad-Car", "English-Dance"). These mean the song must satisfy **all parts** of the name. For example:\n'
+                    f'   - "Hindi-Party" means the song must be **both in Hindi** and **suitable for parties**.\n'
+                    f'   - "Sad-Car" means the song must be **sad** and **appropriate to play in a car**.\n'
+                    f"3. Use your best understanding of the song’s genre, mood, lyrics, language, popularity, and energy.\n"
+                    f"4. For each playlist, indicate how confident the AI model is that the song is a fit for that playlist, as a score between 0 and 1 (1 means very confident, 0 means not confident at all).\n"
+                    f"5. Return only a valid **JSON-style dictionary** (in plain text) with playlist names as keys and confidence levels as float values.\n"
+                    f"6. If the song does not belong in any playlist, return an empty dictionary: {{}}.\n\n"
+                    f"Do NOT include any explanation, markdown, code block, or extra text.\n"
+                    f"Do NOT wrap the output in ```json or ```python.\n"
+                    f'Just return a raw dictionary string like this: {{"Pop": 0.957135842, "Romantic": 0.774135984, "English-Dance": 1.000000000}}'
+                )
 
-            try:
-                response_2_0_flash_lite = model_2_0_flash_lite.generate_content(prompt)
-            except Exception as e:
-                print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
-                response_2_0_flash_lite = DummyResponse()
+                try:
+                    response_1_5_flash = model_1_5_flash.generate_content(prompt)
+                except Exception as e:
+                    print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
+                    response_1_5_flash = DummyResponse()
 
-            try:
-                response_2_0_flash = model_2_0_flash.generate_content(prompt)
-            except Exception as e:
-                print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
-                response_2_0_flash = DummyResponse()
+                try:
+                    response_2_0_flash_lite = model_2_0_flash_lite.generate_content(
+                        prompt
+                    )
+                except Exception as e:
+                    print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
+                    response_2_0_flash_lite = DummyResponse()
 
-            result_1_5_flash.append(
-                {
-                    "track_id": track_id,
-                    "track": track,
-                    "playlist": response_1_5_flash.candidates[0].content.parts[0].text,
-                }
-            )
-            result_2_0_flash_lite.append(
-                {
-                    "track_id": track_id,
-                    "track": track,
-                    "playlist": response_2_0_flash_lite.candidates[0]
-                    .content.parts[0]
-                    .text,
-                }
-            )
-            result_2_0_flash.append(
-                {
-                    "track_id": track_id,
-                    "track": track,
-                    "playlist": response_2_0_flash.candidates[0].content.parts[0].text,
-                }
-            )
+                try:
+                    response_2_0_flash = model_2_0_flash.generate_content(prompt)
+                except Exception as e:
+                    print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
+                    response_2_0_flash = DummyResponse()
 
-            end_time = time.time()  # End timer
-            duration = end_time - start_time
-            print(duration)
-            if duration < 4:
-                time.sleep(4 - duration)
+                result_1_5_flash.append(
+                    {
+                        "track_id": track_id,
+                        "track": track,
+                        "playlist": response_1_5_flash.candidates[0]
+                        .content.parts[0]
+                        .text,
+                    }
+                )
+                result_2_0_flash_lite.append(
+                    {
+                        "track_id": track_id,
+                        "track": track,
+                        "playlist": response_2_0_flash_lite.candidates[0]
+                        .content.parts[0]
+                        .text,
+                    }
+                )
+                result_2_0_flash.append(
+                    {
+                        "track_id": track_id,
+                        "track": track,
+                        "playlist": response_2_0_flash.candidates[0]
+                        .content.parts[0]
+                        .text,
+                    }
+                )
+
+                end_time = time.time()  # End timer
+                duration = end_time - start_time
+                print(duration)
+                if duration < 4:
+                    time.sleep(4 - duration)
 
     # print(result)
     result = []
@@ -179,12 +186,12 @@ def sort_tracks():
 
 
 def compute_weighted_result(
-    result_1_5_flash, result_2_0_flash_lite, result_2_0_flash, threshold=0.68
+    result_1_5_flash, result_2_0_flash_lite, result_2_0_flash, threshold=0.87
 ):
     WEIGHTS = {
-        "gemini-1.5-flash": 0.347,
-        "gemini-2.0-flash-lite": 0.320,
-        "gemini-2.0-flash": 0.337,
+        "gemini-1.5-flash": 0.35,
+        "gemini-2.0-flash-lite": 0.25,
+        "gemini-2.0-flash": 0.40,
     }
 
     result = []
@@ -198,25 +205,28 @@ def compute_weighted_result(
             track_id = result_1_5_flash[i]["track_id"]
             track = result_1_5_flash[i]["track"]
 
-            # Parse the playlists from string to list
+            # Parse stringified dicts into actual Python dicts
             playlists_1_5 = ast.literal_eval(result_1_5_flash[i]["playlist"])
             playlists_lite = ast.literal_eval(result_2_0_flash_lite[i]["playlist"])
             playlists_2_0 = ast.literal_eval(result_2_0_flash[i]["playlist"])
 
-            # Score aggregation
+            # Initialize dictionary to hold weighted scores
             tag_scores = defaultdict(float)
 
-            for tag in playlists_1_5:
-                tag_scores[tag.strip()] += WEIGHTS["gemini-1.5-flash"]
-            for tag in playlists_lite:
-                tag_scores[tag.strip()] += WEIGHTS["gemini-2.0-flash-lite"]
-            for tag in playlists_2_0:
-                tag_scores[tag.strip()] += WEIGHTS["gemini-2.0-flash"]
+            # Add weighted scores from each model
+            for tag, score in playlists_1_5.items():
+                tag_scores[tag.strip()] += score * WEIGHTS["gemini-1.5-flash"]
 
-            # Sort tags by weighted score (optional)
+            for tag, score in playlists_lite.items():
+                tag_scores[tag.strip()] += score * WEIGHTS["gemini-2.0-flash-lite"]
+
+            for tag, score in playlists_2_0.items():
+                tag_scores[tag.strip()] += score * WEIGHTS["gemini-2.0-flash"]
+
+            # Sort tags by final score (optional)
             sorted_tags = sorted(tag_scores.items(), key=lambda x: x[1], reverse=True)
 
-            # Filter top tags with score >= 0.5 (you can tweak this threshold)
+            # Select only those with final score >= threshold
             final_tags = [tag for tag, score in sorted_tags if score >= threshold]
 
             result.append(

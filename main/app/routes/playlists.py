@@ -63,8 +63,8 @@ def get_playlists():
             )
         session["selected_output"] = selected_output
         session["all_tracks"] = all_tracks
-        # return redirect("/sort")
-        return redirect(f"/playlist/{selected_input[0]}/tracks")
+        return redirect("/sort")
+        # return redirect(f"/playlist/{selected_input[0]}/tracks")
     else:
         selected_input = ["1"]
         selected_output = []
