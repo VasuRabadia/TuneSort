@@ -1,12 +1,18 @@
-from flask import Blueprint, session, jsonify, render_template, request, redirect
+from flask import Blueprint, session, jsonify
 from dotenv import load_dotenv
-import requests
 import os
-import json
 import google.generativeai as genai
 import time
 import ast
 from collections import defaultdict
+
+from app.db.mongo import (
+    insert_classification_result,
+    get_all_classifications,
+    find_existing_track,
+    update_classification_result,
+)
+from app.utils.weights import compute_agreement_weights
 
 load_dotenv()
 
@@ -146,53 +152,62 @@ def sort_tracks():
                 if duration < 4:
                     time.sleep(4 - duration)
 
-    # print(result)
-    result = []
-
-    for i in range(len(result_1_5_flash)):
-        # Ensure you're matching the same track across the lists
-        if (
-            result_1_5_flash[i]["track_id"]
-            == result_2_0_flash_lite[i]["track_id"]
-            == result_2_0_flash[i]["track_id"]
-        ):
-            track_id = result_1_5_flash[i]["track_id"]
-            track = result_1_5_flash[i]["track"]
-
-            # Convert string representations of lists to actual Python lists
-            playlists_1_5 = ast.literal_eval(result_1_5_flash[i]["playlist"])
-            playlists_lite = ast.literal_eval(result_2_0_flash_lite[i]["playlist"])
-            playlists_2_0 = ast.literal_eval(result_2_0_flash[i]["playlist"])
-
-            # Compute intersection
-            common_playlists = list(
-                set(playlists_1_5) & set(playlists_lite) & set(playlists_2_0)
-            )
-
-            result.append(
-                {
-                    "track_id": track_id,
-                    "track": track,
-                    "gemini-1.5-flash-playlists": list(playlists_1_5),
-                    "gemini-2.0-flash-lite-playlists": list(playlists_lite),
-                    "gemini-2.0-flash-playlists": list(playlists_2_0),
-                    "common_playlists": common_playlists,
-                }
-            )
-    # return jsonify(result)
-    return compute_weighted_result(
-        result_1_5_flash, result_2_0_flash_lite, result_2_0_flash
+    weight_result = compute_weighted_result(
+        result_1_5_flash, result_2_0_flash_lite, result_2_0_flash, playlists
     )
+
+    for track in weight_result:
+        existing_track = find_existing_track(track["track_id"])
+        if existing_track:
+            prompt_playlists = list(
+                set(
+                    existing_track.get("prompt_playlists", [])
+                    + track["prompt_playlists"]
+                )
+            )
+            final_ensemble_playlists = list(
+                set(
+                    existing_track.get("final_ensemble_playlists", [])
+                    + track["final_ensemble_playlists"]
+                )
+            )
+            ensemble_scores = {
+                **existing_track.get("ensemble_scores", {}),
+                **track["ensemble_scores"],
+            }
+            db_entry = {
+                "track_id": track["track_id"],
+                "track": track["track"],
+                "prompt_playlists": prompt_playlists,
+                "ensemble_scores": ensemble_scores,
+                "final_ensemble_playlists": final_ensemble_playlists,
+            }
+            update_classification_result(db_entry)
+        else:
+            db_entry = {
+                "track_id": track["track_id"],
+                "track": track["track"],
+                "prompt_playlists": track["prompt_playlists"],
+                "ensemble_scores": track["ensemble_scores"],
+                "final_ensemble_playlists": track["final_ensemble_playlists"],
+            }
+            insert_classification_result(db_entry)
+
+    return jsonify(get_all_classifications())
 
 
 def compute_weighted_result(
-    result_1_5_flash, result_2_0_flash_lite, result_2_0_flash, threshold=0.87
+    result_1_5_flash,
+    result_2_0_flash_lite,
+    result_2_0_flash,
+    prompt_playlists,
+    threshold=0.87,
 ):
-    WEIGHTS = {
-        "gemini-1.5-flash": 0.35,
-        "gemini-2.0-flash-lite": 0.25,
-        "gemini-2.0-flash": 0.40,
-    }
+    WEIGHTS = compute_agreement_weights(
+        result_1_5_flash, result_2_0_flash_lite, result_2_0_flash
+    )
+
+    print(f"WEIGHTS:\n{WEIGHTS}")
 
     result = []
 
@@ -238,10 +253,12 @@ def compute_weighted_result(
                     "gemini-2.0-flash-playlists": playlists_2_0,
                     "ensemble_scores": dict(tag_scores),
                     "final_ensemble_playlists": final_tags,
+                    "prompt_playlists": prompt_playlists,
+                    "threshold": threshold,
                 }
             )
 
-    return jsonify(result)
+    return result
 
 
 class DummyResponse:
