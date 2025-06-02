@@ -1,76 +1,75 @@
-from pymongo import MongoClient
-from pymongo.server_api import ServerApi
-from urllib.parse import quote_plus
-from datetime import datetime
 from dotenv import load_dotenv
 import os
+from pymongo import MongoClient
+from datetime import datetime, timezone
 
 load_dotenv()
 
-# Replace with your MongoDB Atlas connection string
-MONGO_USER_PASSWORD = os.getenv("MONGO_USER_PASSWORD")
-password = quote_plus(MONGO_USER_PASSWORD)
-uri = f"mongodb+srv://rabadiavasu:{password}@spotifyautomation.25a7oxn.mongodb.net/?retryWrites=true&w=majority&appName=SpotifyAutomation"
-client = MongoClient(uri, server_api=ServerApi("1"))
+MONGODB_URI = os.getenv("MONGODB_URI")
+
 try:
+    client = MongoClient(MONGODB_URI, tls=True)
+
     client.admin.command("ping")
-    print("Pinged your deployment. You successfully connected to MongoDB!")
+    print("Connected to MongoDB!")
+
+    db = client["music_db"]
+
+    collection = db["tracks"]
+    print("Collection 'tracks' ready.")
+
 except Exception as e:
-    print(e)
-
-db = client["music_classifier"]
-collection = db["track_classifications"]
+    print(f"Error connecting to MongoDB: {e}")
 
 
-def insert_classification_result(result):
-    try:
-        result["timestamp"] = datetime.utcnow().isoformat()
-        collection.insert_one(result)
-        print("Document inserted.")
-    except Exception as e:
-        print("Failed to insert:", e)
+def insert_update_entry(entry):
+    id_exists = bool(collection.find_one({"track_id": entry["track_id"]}))
+    if id_exists:
+        update_entry(entry["track_id"], entry)
+        return
+    timestamp = datetime.now(timezone.utc)
+    entry["time_created"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+    collection.insert_one(entry)
 
 
-def update_classification_result(result):
-    try:
-        result["timestamp"] = datetime.utcnow().isoformat()
-        collection.update_one(
-            {"track_id": result["track_id"]},
-            {"$set": result},
-        )
-        print("Document updated.")
-    except Exception as e:
-        print("Failed to update:", e)
+def update_entry(track_id, updates):
+    entry = collection.find_one({"track_id": track_id})
+
+    if "prompted_playlists" in updates:
+        existing = set(entry.get("prompted_playlists", []))
+        new = set(updates["prompted_playlists"])
+        updates["prompted_playlists"] = list(existing.union(new))
+
+    if "final_playlists" in updates:
+        existing = set(entry.get("final_playlists", []))
+        new = set(updates["final_playlists"])
+        updates["final_playlists"] = list(existing.union(new))
+
+    timestamp = datetime.now(timezone.utc)
+    updates["time_updated"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+    collection.update_one({"track_id": track_id}, {"$set": updates})
 
 
-def find_existing_track(track_id):
-    return collection.find_one({"track_id": track_id})
+def get_entry_by_track_id(track_id):
+    entry = collection.find_one({"track_id": track_id}, {"_id": 0})
+    return entry
 
 
-def get_all_classifications(limit=10):
-    """
-    Returns up to `limit` documents from the collection for debugging purposes.
-    Excludes the `_id` field from the returned documents.
-    """
-    documents = collection.find({}, {"_id": 0}).limit(
-        limit
-    )  # Exclude _id via projection
-    return list(documents)
+def get_all_entries(limit=10):
+    entries = collection.find({}, {"_id": 0}).limit(limit)
+    return entries
 
 
 if __name__ == "__main__":
-    # insert_classification_result(
-    #     {
-    #         "track_id": "123456789",
-    #         "track": "Shape of You",
-    #         "prompt_playlists": ["English-Dance", "Pop", "Workout"],
-    #         "model_outputs": {
-    #             "gemini-1.5-flash": {"Pop": 0.8, "English-Dance": 0.7},
-    #             "gemini-2.0-flash-lite": {"Pop": 0.85, "English-Dance": 0.6},
-    #             "gemini-2.0-flash": {"Pop": 0.82, "English-Dance": 0.9},
-    #         },
-    #         "ensemble_scores": {"Pop": 0.81, "English-Dance": 0.75},
-    #         "final_ensemble_playlists": ["Pop", "English-Dance"],
-    #     }
-    # )
-    print(get_all_classifications())
+    # Example usage
+    sample_entry = {
+        "track_id": "12345",
+        "name": "Track by Artist",
+        "prompted_playlists": ["playlist1", "playlist2"],
+        "final_playlists": ["final_playlist1"],
+    }
+    insert_update_entry(sample_entry)
+
+    all_entries = get_all_entries()
+    for entry in all_entries:
+        print(entry)

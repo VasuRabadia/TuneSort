@@ -50,4 +50,4 @@ def get_playlist_tracks(playlist_id):
                 }
             )
 
-    return jsonify({"track_count": len(track_info), "tracks": track_info})
+    return jsonify({"tracks": track_info})

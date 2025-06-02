@@ -6,13 +6,10 @@ import time
 import ast
 from collections import defaultdict
 
-from app.db.mongo import (
-    insert_classification_result,
-    get_all_classifications,
-    find_existing_track,
-    update_classification_result,
-)
-from app.utils.weights import compute_agreement_weights
+from app.db.mongo import insert_update_entry, get_all_entries, get_entry_by_track_id
+from app.assets.hybrid_dynamic_weight import compute_hybrid_weights, normalize
+from app.assets.dummy_response import DummyResponse
+
 
 load_dotenv()
 
@@ -48,6 +45,11 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 #     models_json.append(model_info)
 # with open("main/data/models.json", "w") as f:
 #     json.dump(models_json, f)
+# models_name = []
+# with open("main/data/models_name.json", "w") as f:
+#     for model in models_json:
+#         models_name.append(model["name"])
+#     json.dump(models_name, f)
 
 model_1_5_flash = genai.GenerativeModel("gemini-1.5-flash")
 model_2_0_flash_lite = genai.GenerativeModel("gemini-2.0-flash-lite")
@@ -56,34 +58,42 @@ model_2_0_flash = genai.GenerativeModel("gemini-2.0-flash")
 
 @sort_bp.route("/sort", methods=["GET", "POST"])
 def sort_tracks():
-    all_tracks = session.get("all_tracks")
-    selected_output = session.get("selected_output")
+    unique_tracks = session.get("unique_tracks")
+    output_playlists = session.get("output_playlists")
     playlist_map = session.get("playlist_map")
     # print(playlist_map)
-    playlists = [playlist_map[pid] for pid in selected_output if pid in playlist_map]
+    # playlists = [playlist_map[pid] for pid in output_playlists if pid in playlist_map]
+    playlists = [
+        playlist_map[pid["id"]] for pid in output_playlists if pid["id"] in playlist_map
+    ]
+    # print(f"Playlists: {playlists}")
 
     result_1_5_flash = []
     result_2_0_flash_lite = []
     result_2_0_flash = []
-    for ls in all_tracks:
-        # print("LS:", ls)
-        for tr in ls["tracks"]:
-            # print("TR:", tr)
-            start_time = time.time()  # Start timer
+    for tr in unique_tracks:
+        track_name = tr["name"]
 
+        if track_name != "":
             track_id = tr["id"]
-            track_name = tr["name"]
-            track_artists = tr["artist"]
+            prompt_playlists = playlists.copy()
 
-            if track_name != "":
+            entry = get_entry_by_track_id(track_id)
+            if entry:
+                # print(f"ENTRY: {entry}")
+                for pl in entry.get("final_playlists", []):
+                    if pl in prompt_playlists:
+                        prompt_playlists.remove(pl)
 
+            if prompt_playlists != []:
+                track_artists = tr["artist"]
                 track = track_name + " by " + ", ".join(track_artists)
 
                 print({"track_id": track_id, "track": track})
-
+                print(f"prompt_playlists: {prompt_playlists}")
                 prompt = (
                     f"You are an expert music classifier.\n\n"
-                    f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {playlists}.\n\n'
+                    f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {prompt_playlists}.\n\n'
                     f"Instructions:\n"
                     f'1. Each playlist name may include genre (e.g., "Pop", "HipHop"), mood (e.g., "Sad", "Happy", "Emotional"), language (e.g., "English", "Hindi", "Punjabi"), or context (e.g., "Party", "Car", "Workout", "Gaming").\n'
                     f'2. Some playlists have compound names (e.g., "Hindi-Party", "Sad-Car", "English-Dance"). These mean the song must satisfy **all parts** of the name. For example:\n'
@@ -98,6 +108,7 @@ def sort_tracks():
                     f'Just return a raw dictionary string like this: {{"Pop": 0.957135842, "Romantic": 0.774135984, "English-Dance": 1.000000000}}'
                 )
 
+                start_time = time.time()  # Start timer
                 try:
                     response_1_5_flash = model_1_5_flash.generate_content(prompt)
                 except Exception as e:
@@ -152,48 +163,21 @@ def sort_tracks():
                 if duration < 4:
                     time.sleep(4 - duration)
 
-    weight_result = compute_weighted_result(
-        result_1_5_flash, result_2_0_flash_lite, result_2_0_flash, playlists
+    weighted_result = compute_weighted_result(
+        result_1_5_flash, result_2_0_flash_lite, result_2_0_flash
     )
 
-    for track in weight_result:
-        existing_track = find_existing_track(track["track_id"])
-        if existing_track:
-            prompt_playlists = list(
-                set(
-                    existing_track.get("prompt_playlists", [])
-                    + track["prompt_playlists"]
-                )
-            )
-            final_ensemble_playlists = list(
-                set(
-                    existing_track.get("final_ensemble_playlists", [])
-                    + track["final_ensemble_playlists"]
-                )
-            )
-            ensemble_scores = {
-                **existing_track.get("ensemble_scores", {}),
-                **track["ensemble_scores"],
-            }
-            db_entry = {
-                "track_id": track["track_id"],
-                "track": track["track"],
-                "prompt_playlists": prompt_playlists,
-                "ensemble_scores": ensemble_scores,
-                "final_ensemble_playlists": final_ensemble_playlists,
-            }
-            update_classification_result(db_entry)
-        else:
-            db_entry = {
-                "track_id": track["track_id"],
-                "track": track["track"],
-                "prompt_playlists": track["prompt_playlists"],
-                "ensemble_scores": track["ensemble_scores"],
-                "final_ensemble_playlists": track["final_ensemble_playlists"],
-            }
-            insert_classification_result(db_entry)
+    for entry in weighted_result:
+        db_entry = {
+            "track_id": entry["track_id"],
+            "track": entry["track"],
+            "prompted_playlists": playlists,
+            "final_playlists": entry["final_ensemble_playlists"],
+        }
+        insert_update_entry(db_entry)
 
-    return jsonify(get_all_classifications())
+    entries_list = list(get_all_entries(limit=20))
+    return jsonify(entries_list)
 
 
 def compute_weighted_result(
@@ -203,11 +187,6 @@ def compute_weighted_result(
     prompt_playlists,
     threshold=0.87,
 ):
-    WEIGHTS = compute_agreement_weights(
-        result_1_5_flash, result_2_0_flash_lite, result_2_0_flash
-    )
-
-    print(f"WEIGHTS:\n{WEIGHTS}")
 
     result = []
 
@@ -225,18 +204,35 @@ def compute_weighted_result(
             playlists_lite = ast.literal_eval(result_2_0_flash_lite[i]["playlist"])
             playlists_2_0 = ast.literal_eval(result_2_0_flash[i]["playlist"])
 
+            model_outputs = {
+                "gemini-1.5-flash": normalize(list(playlists_1_5.values())),
+                "gemini-2.0-flash-lite": normalize(list(playlists_lite.values())),
+                "gemini-2.0-flash": normalize(list(playlists_2_0.values())),
+            }
+
+            # Optional: define accuracy if using hybrid; remove to use entropy-only
+            model_accuracies = {
+                "gemini-1.5-flash": 0.84,
+                "gemini-2.0-flash-lite": 0.76,
+                "gemini-2.0-flash": 0.91,
+            }
+
+            # Compute hybrid weights
+            weights = compute_hybrid_weights(model_outputs, model_accuracies)
+            # print(f"WEIGHTS: {weights}")
+
             # Initialize dictionary to hold weighted scores
             tag_scores = defaultdict(float)
 
             # Add weighted scores from each model
             for tag, score in playlists_1_5.items():
-                tag_scores[tag.strip()] += score * WEIGHTS["gemini-1.5-flash"]
+                tag_scores[tag.strip()] += score * weights["gemini-1.5-flash"]
 
             for tag, score in playlists_lite.items():
-                tag_scores[tag.strip()] += score * WEIGHTS["gemini-2.0-flash-lite"]
+                tag_scores[tag.strip()] += score * weights["gemini-2.0-flash-lite"]
 
             for tag, score in playlists_2_0.items():
-                tag_scores[tag.strip()] += score * WEIGHTS["gemini-2.0-flash"]
+                tag_scores[tag.strip()] += score * weights["gemini-2.0-flash"]
 
             # Sort tags by final score (optional)
             sorted_tags = sorted(tag_scores.items(), key=lambda x: x[1], reverse=True)
@@ -253,26 +249,9 @@ def compute_weighted_result(
                     "gemini-2.0-flash-playlists": playlists_2_0,
                     "ensemble_scores": dict(tag_scores),
                     "final_ensemble_playlists": final_tags,
-                    "prompt_playlists": prompt_playlists,
+                    "ensemble_weights": weights,
                     "threshold": threshold,
                 }
             )
 
     return result
-
-
-class DummyResponse:
-    def __init__(self, text="[]"):
-        self.candidates = [self._Candidate(text)]
-
-    class _Candidate:
-        def __init__(self, text):
-            self.content = self._Content(text)
-
-        class _Content:
-            def __init__(self, text):
-                self.parts = [self._Part(text)]
-
-            class _Part:
-                def __init__(self, text):
-                    self.text = text

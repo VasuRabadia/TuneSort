@@ -17,7 +17,7 @@ def index():
         "https://accounts.spotify.com/authorize"
         "?response_type=code"
         f"&client_id={CLIENT_ID}"
-        f"&scope=playlist-read-private%20user-library-read"
+        f"&scope=playlist-read-private%20playlist-modify-private%20playlist-modify-public%20playlist-read-collaborative%20user-read-private%20user-library-read"
         f"&redirect_uri={REDIRECT_URI}"
     )
     return redirect(auth_url)
