@@ -25,6 +25,9 @@ def get_playlists():
     headers = {"Authorization": f"Bearer {access_token}"}
 
     response = requests.get("https://api.spotify.com/v1/me/playlists", headers=headers)
+    # response_spotify = requests.get(
+    #     "https://api.spotify.com/v1/users/spotify/playlists", headers=headers
+    # )
 
     if response.status_code != 200:
         return (
@@ -33,45 +36,71 @@ def get_playlists():
         )
 
     playlists_data = response.json()
-    # with open("main/data/playlists.json", "w") as f:
-    #     json.dump(playlists_data, f)
-    playlists = [{"id": "1", "name": "Liked Songs"}]
-    for pl in playlists_data["items"]:
-        if pl.get("type") == "playlist":
-            playlists.append({"id": pl.get("id"), "name": pl.get("name")})
-    playlist_map = {pl["id"]: pl["name"] for pl in playlists}
+    # return jsonify(response_spotify.json())
+    playlists = [
+        {
+            "id": "1",
+            "name": "Liked Songs",
+            "image": (f"liked_songs_no_bg.png"),
+            "is_empty": False,
+        }
+    ]
+    for item in playlists_data["items"]:
+        if item.get("type") == "playlist":
+            playlists.append(
+                {
+                    "id": item.get("id"),
+                    "name": item.get("name"),
+                    "image": (
+                        item["images"][0]["url"]
+                        if item.get("images")
+                        else f"empty_playlist_no_bg.png"
+                    ),
+                    "is_empty": not bool(item.get("images")),
+                }
+            )
+    playlist_map = {item["id"]: item["name"] for item in playlists}
     session["playlist_map"] = playlist_map
 
-    input_options = playlists.copy()
-    output_options = playlists.copy()
-    output_options.remove({"id": "1", "name": "Liked Songs"})
-
     if request.method == "POST":
-        selected_input = request.form.getlist("input[]")
-        selected_output = request.form.getlist("output[]")
-        user_response = requests.get("https://api.spotify.com/v1/me", headers=headers)
-        if user_response.status_code != 200:
-            return {"error": "Failed to fetch user info"}, user_response.status_code
-        user_id = user_response.json().get("id")
-        if not user_id:
-            return {"error": "User ID not found in response"}, 500
-        all_tracks = []
-        for pid in selected_input:
-            playlist_url = request.host_url + f"playlist/{pid}/tracks"
-            all_tracks.append(
-                requests.get(playlist_url, cookies=request.cookies).json()
-            )
-        session["selected_output"] = selected_output
-        session["all_tracks"] = all_tracks
+        selected_data_raw = request.form.get("selected_data")
+        try:
+            selected_data = json.loads(selected_data_raw)
+        except Exception as e:
+            return jsonify({"error": "Invalid data format", "details": str(e)}, 400)
+        input_playlists = []
+        output_playlists = []
+        for pl in selected_data:
+            playlist = {
+                "type": pl["id"].split("_")[0],
+                "id": pl["id"].split("_")[1],
+                "name": pl["name"],
+            }
+            if playlist["type"] == "input":
+                input_playlists.append(playlist)
+            else:
+                output_playlists.append(playlist)
+
+        session["output_playlists"] = output_playlists
+
+        tracks = []
+        for pl in input_playlists:
+            playlist_url = request.host_url + f"playlist/{pl["id"]}/tracks"
+            tracks.append(requests.get(playlist_url, cookies=request.cookies).json())
+
+        seen_ids = set()
+        unique_tracks = []
+        for track_list in tracks:
+            for track in track_list.get("tracks", []):
+                track_id = track.get("id")
+                track_name = track.get("name")
+                if track_name and track_id not in seen_ids:
+                    seen_ids.add(track_id)
+                    unique_tracks.append(track)
+
+        session["unique_tracks"] = unique_tracks
+        # return jsonify({"unique_tracks": unique_tracks})
         return redirect("/sort")
         # return redirect(f"/playlist/{selected_input[0]}/tracks")
     else:
-        selected_input = ["1"]
-        selected_output = []
-        return render_template(
-            "index.html",
-            input_options=input_options,
-            output_options=output_options,
-            selected_input=selected_input,
-            selected_output=selected_output,
-        )
+        return render_template("index.html", playlists=playlists)
