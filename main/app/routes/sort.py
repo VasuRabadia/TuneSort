@@ -1,8 +1,6 @@
-from flask import Blueprint, session, jsonify, render_template, request, redirect
+from flask import Blueprint, session, jsonify
 from dotenv import load_dotenv
-import requests
 import os
-import json
 import google.generativeai as genai
 import time
 import ast
@@ -11,6 +9,7 @@ from collections import defaultdict
 from app.db.mongo import insert_update_entry, get_all_entries, get_entry_by_track_id
 from app.assets.hybrid_dynamic_weight import compute_hybrid_weights, normalize
 from app.assets.dummy_response import DummyResponse
+
 
 load_dotenv()
 
@@ -182,7 +181,11 @@ def sort_tracks():
 
 
 def compute_weighted_result(
-    result_1_5_flash, result_2_0_flash_lite, result_2_0_flash, threshold=0.87
+    result_1_5_flash,
+    result_2_0_flash_lite,
+    result_2_0_flash,
+    prompt_playlists,
+    threshold=0.87,
 ):
 
     result = []
@@ -247,6 +250,7 @@ def compute_weighted_result(
                     "ensemble_scores": dict(tag_scores),
                     "final_ensemble_playlists": final_tags,
                     "ensemble_weights": weights,
+                    "threshold": threshold,
                 }
             )
 
