@@ -122,3 +122,18 @@ p {
 .image_hover.selected .tick-icon {
   display: block;
 }
+
+.text-gradient {
+  color: #592e2f;
+  background-image: linear-gradient(
+    45deg,
+    #ffffff,
+    #ffe5e5,
+    #ffcccc,
+    #ffb3b3,
+    #ff9999
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
