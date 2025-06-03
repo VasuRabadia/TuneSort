@@ -42,11 +42,10 @@
                   src="{% if 'http' in playlist.image %}{{ playlist.image }}{% else %}{{ url_for('static', filename='images/' ~ playlist.image) }}{% endif %}"
                   alt="{{ playlist.name }}"
                 />
-                <div class="tick-icon"><!-- Tick Icon --></div>
               </div>
               <div class="inner_text">
                 <div class="text">
-                  <span class="fw-normal fs-3">{{ playlist.name }}</span>
+                  <span class="fw-bold fs-3">{{ playlist.name }}</span>
                   <div class="para uppercase fw-bolder fs-3">
                     <p class="select-text">SELECT</p>
                   </div>
@@ -82,7 +81,7 @@
               </div>
               <div class="inner_text">
                 <div class="text">
-                  <span class="fw-normal fs-3">{{ playlist.name }}</span>
+                  <span class="fw-bold fs-3">{{ playlist.name }}</span>
                   <div class="para uppercase fw-bolder fs-3">
                     <p class="select-text">SELECT</p>
                   </div>
