@@ -19,9 +19,9 @@
   <body>
     <div class="container">
       <form method="POST" action="/playlists">
-        <input type="hidden" name="selected_data" id="selectedData" />
+        <input type="hidden" name="selected_data" id="selected_data" />
         <!-- INPUT PLAYLISTS -->
-        <label for="input_playlists" class="fs-1 fw-bolder uppercase"
+        <label for="input_playlists" class="fs-1 fw-bolder text-uppercase"
           >input playlists</label
         >
         <div
@@ -44,10 +44,12 @@
                 />
               </div>
               <div class="inner_text">
-                <div class="text">
-                  <span class="fw-bold fs-3">{{ playlist.name }}</span>
-                  <div class="para uppercase fw-bolder fs-3">
-                    <p class="select-text">SELECT</p>
+                <div class="text text-white">
+                  <span class="name fw-bold fs-3 bg-dark width-225"
+                    >{{ playlist.name }}</span
+                  >
+                  <div class="para text-uppercase fw-bolder fs-3">
+                    <p class="select-text bg-dark width-225">SELECT</p>
                   </div>
                 </div>
               </div>
@@ -56,7 +58,7 @@
           {% endif %} {% endfor %}
         </div>
         <!-- OUTPUT PLAYLISTS -->
-        <label for="output_playlists" class="fs-1 fw-bolder uppercase"
+        <label for="output_playlists" class="fs-1 fw-bolder text-uppercase"
           >output playlists</label
         >
         <div
@@ -77,13 +79,14 @@
                   src="{% if 'http' in playlist.image %}{{ playlist.image }}{% else %}{{ url_for('static', filename='images/' ~ playlist.image) }}{% endif %}"
                   alt="{{ playlist.name }}"
                 />
-                <div class="tick-icon"><!-- Tick Icon --></div>
               </div>
               <div class="inner_text">
-                <div class="text">
-                  <span class="fw-bold fs-3">{{ playlist.name }}</span>
-                  <div class="para uppercase fw-bolder fs-3">
-                    <p class="select-text">SELECT</p>
+                <div class="text text-white">
+                  <span class="name fw-bold fs-3 bg-dark width-225"
+                    >{{ playlist.name }}</span
+                  >
+                  <div class="para text-uppercase fw-bolder fs-3">
+                    <p class="select-text bg-dark width-225">SELECT</p>
                   </div>
                 </div>
               </div>
@@ -91,6 +94,27 @@
           </div>
           {% endif %} {% endfor %}
         </div>
+        <!-- CREATE NEW OUTPUT PLAYLIST -->
+        <div class="row align-items-center">
+          <div class="col-md-4">
+            <label
+              for="new_output_playlists"
+              class="fs-1 fw-bolder text-uppercase"
+            >
+              Create New Output Playlist
+            </label>
+          </div>
+          <div class="col-md-8">
+            <input
+              type="text"
+              class="form-control fs-5 bg-dark text-white fw-bolder py-3 create-playlist-input"
+              id="new_output_playlists"
+              name="new_output_playlists"
+              placeholder="Enter New Playlist Names (Separate Using Commas)"
+            />
+          </div>
+        </div>
+        <!-- SUBMIT BUTTON -->
         <div class="d-grid gap-2 mx-3 my-2">
           <button class="btn btn-primary btn-lg" type="submit">Submit</button>
         </div>
@@ -116,23 +140,20 @@
     </script>
     <!-- Custom JS -->
     <script>
-      document
-        .querySelector("form")
-        .addEventListener("submit", function (event) {
-          const selectedElements = document.querySelectorAll(
-            ".image_hover.selected"
-          );
-          const selectedData = Array.from(selectedElements).map((el) => {
-            return {
-              id: el.getAttribute("data-id"),
-              name: el.getAttribute("data-name"),
-              selected: true,
-            };
-          });
+      // This script adds selected track data to a hidden input field before submit
+      document.querySelector("form").addEventListener("submit", function () {
+        const selectedElements = document.querySelectorAll(
+          ".image_hover.selected"
+        );
+        const selected_data = Array.from(selectedElements).map((el) => ({
+          id: el.getAttribute("data-id"),
+          name: el.getAttribute("data-name"),
+          selected: true,
+        }));
 
-          document.getElementById("selectedData").value =
-            JSON.stringify(selectedData);
-        });
+        document.getElementById("selected_data").value =
+          JSON.stringify(selected_data);
+      });
     </script>
   </body>
 </html>

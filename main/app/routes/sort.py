@@ -58,6 +58,13 @@ model_2_0_flash = genai.GenerativeModel("gemini-2.0-flash")
 
 @sort_bp.route("/sort", methods=["GET", "POST"])
 def sort_tracks():
+    access_token = session.get("access_token")
+    if not access_token:
+        return (
+            jsonify({"error": "Access token not found. Authorize first via /home"}),
+            401,
+        )
+
     unique_tracks = session.get("unique_tracks")
     output_playlists = session.get("output_playlists")
     playlist_map = session.get("playlist_map")
