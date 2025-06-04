@@ -10,18 +10,23 @@ def create_app():
     app.config["SESSION_TYPE"] = "filesystem"
     Session(app)
 
+    from .routes.create_playlist import create_playlist_bp
     from .routes.home import home_bp
     from .routes.index import index_bp
     from .routes.playlists import playlists_bp
     from .routes.sort import sort_bp
+
     # from .routes.test import test_bp
     from .routes.tracks import tracks_bp
+    from .routes.user import user_bp
 
+    app.register_blueprint(create_playlist_bp)
     app.register_blueprint(home_bp)
     app.register_blueprint(index_bp)
     app.register_blueprint(playlists_bp)
     app.register_blueprint(sort_bp)
     # app.register_blueprint(test_bp)
     app.register_blueprint(tracks_bp)
+    app.register_blueprint(user_bp)
 
     return app

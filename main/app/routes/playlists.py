@@ -64,10 +64,12 @@ def get_playlists():
 
     if request.method == "POST":
         selected_data_raw = request.form.get("selected_data")
+        new_output_playlists_raw = request.form.get("new_output_playlists")
         try:
             selected_data = json.loads(selected_data_raw)
         except Exception as e:
             return jsonify({"error": "Invalid data format", "details": str(e)}, 400)
+
         input_playlists = []
         output_playlists = []
         for pl in selected_data:
@@ -80,6 +82,59 @@ def get_playlists():
                 input_playlists.append(playlist)
             else:
                 output_playlists.append(playlist)
+
+        try:
+            new_output_playlists = [
+                " ".join(word.capitalize() for word in pl.strip().split())
+                for pl in new_output_playlists_raw.split(",")
+                if pl.strip()
+            ]
+        except Exception as e:
+            new_output_playlists = []
+            print(f"ERROR: {e}")
+
+        user_url = request.host_url + f"/user"
+        response = requests.get(user_url, cookies=request.cookies).json()
+        if not response:
+            return (jsonify({"error": "Failed to fetch user", "details": response}),)
+        user_id = response.get("id")
+
+        playlist_map = session.get("playlist_map", {})
+        name_to_id_map = {name: pid for pid, name in playlist_map.items()}
+
+        for pl in new_output_playlists:
+            if pl not in name_to_id_map:
+                create_playlist_url = (
+                    request.host_url + f"create_playlist/{user_id}/{pl}"
+                )
+                response = requests.post(create_playlist_url, cookies=request.cookies)
+                if response.status_code != 201:
+                    return (
+                        jsonify(
+                            {
+                                "error": "Failed to create playlist",
+                                "details": response.status_code,
+                            }
+                        ),
+                    )
+                playlist_id = response["playlist_id"]
+                playlist_name = response["playlist_name"]
+                output_playlists.append(
+                    {
+                        "id": playlist_id,
+                        "name": playlist_name,
+                    }
+                )
+                playlist_map[playlist_id] = playlist_name
+                name_to_id_map[playlist_name] = playlist_id
+
+        return jsonify(
+            {
+                "playlist_map": playlist_map,
+                "name_to_id_map": name_to_id_map,
+                "output_playlists": output_playlists,
+            }
+        )
 
         session["output_playlists"] = output_playlists
 
@@ -99,8 +154,9 @@ def get_playlists():
                     unique_tracks.append(track)
 
         session["unique_tracks"] = unique_tracks
+        return jsonify({"unique_tracks": unique_tracks})
         # return jsonify({"unique_tracks": unique_tracks})
-        return redirect("/sort")
+        # return redirect("/sort")
         # return redirect(f"/playlist/{selected_input[0]}/tracks")
     else:
         return render_template("index.html", playlists=playlists)
