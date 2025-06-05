@@ -36,9 +36,10 @@ def create_playlist(user_id, playlist_name):
             jsonify({"error": "Failed to create playlist", "details": response.json()}),
             response.status_code,
         )
+    response_data = response.json()
     playlist_info = {
-        "playlist_id": response["id"],
-        "playlist_name": response["name"],
+        "playlist_id": response_data["id"],
+        "playlist_name": response_data["name"],
         "status_code": response.status_code,
     }
     return jsonify(playlist_info)
