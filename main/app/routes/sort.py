@@ -3,12 +3,10 @@ from dotenv import load_dotenv
 import os
 import google.generativeai as genai
 import time
-import ast
-from collections import defaultdict
 
 from app.db.mongo import insert_update_entry, get_all_entries, get_entry_by_track_id
-from app.assets.hybrid_dynamic_weight import compute_hybrid_weights, normalize
-from app.assets.dummy_response import DummyResponse
+from app.utils.dummy_response import DummyResponse
+from app.utils.compute_weighted_result import compute_weighted_result
 
 
 load_dotenv()
@@ -92,12 +90,14 @@ def sort_tracks():
                     if pl in prompt_playlists:
                         prompt_playlists.remove(pl)
 
+            print(f"prompt_playlists: {prompt_playlists}")
+
             if prompt_playlists != []:
                 track_artists = tr["artist"]
                 track = track_name + " by " + ", ".join(track_artists)
 
                 print({"track_id": track_id, "track": track})
-                print(f"prompt_playlists: {prompt_playlists}")
+                # print(f"prompt_playlists: {prompt_playlists}")
                 prompt = (
                     f"You are an expert music classifier.\n\n"
                     f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {prompt_playlists}.\n\n'
@@ -174,6 +174,8 @@ def sort_tracks():
         result_1_5_flash, result_2_0_flash_lite, result_2_0_flash
     )
 
+    # return jsonify({"weighted_result": weighted_result})
+
     for entry in weighted_result:
         db_entry = {
             "track_id": entry["track_id"],
@@ -185,80 +187,3 @@ def sort_tracks():
 
     entries_list = list(get_all_entries(limit=20))
     return jsonify(entries_list)
-
-
-def compute_weighted_result(
-    result_1_5_flash,
-    result_2_0_flash_lite,
-    result_2_0_flash,
-    prompt_playlists,
-    threshold=0.87,
-):
-
-    result = []
-
-    for i in range(len(result_1_5_flash)):
-        if (
-            result_1_5_flash[i]["track_id"]
-            == result_2_0_flash_lite[i]["track_id"]
-            == result_2_0_flash[i]["track_id"]
-        ):
-            track_id = result_1_5_flash[i]["track_id"]
-            track = result_1_5_flash[i]["track"]
-
-            # Parse stringified dicts into actual Python dicts
-            playlists_1_5 = ast.literal_eval(result_1_5_flash[i]["playlist"])
-            playlists_lite = ast.literal_eval(result_2_0_flash_lite[i]["playlist"])
-            playlists_2_0 = ast.literal_eval(result_2_0_flash[i]["playlist"])
-
-            model_outputs = {
-                "gemini-1.5-flash": normalize(list(playlists_1_5.values())),
-                "gemini-2.0-flash-lite": normalize(list(playlists_lite.values())),
-                "gemini-2.0-flash": normalize(list(playlists_2_0.values())),
-            }
-
-            # Optional: define accuracy if using hybrid; remove to use entropy-only
-            model_accuracies = {
-                "gemini-1.5-flash": 0.84,
-                "gemini-2.0-flash-lite": 0.76,
-                "gemini-2.0-flash": 0.91,
-            }
-
-            # Compute hybrid weights
-            weights = compute_hybrid_weights(model_outputs, model_accuracies)
-            # print(f"WEIGHTS: {weights}")
-
-            # Initialize dictionary to hold weighted scores
-            tag_scores = defaultdict(float)
-
-            # Add weighted scores from each model
-            for tag, score in playlists_1_5.items():
-                tag_scores[tag.strip()] += score * weights["gemini-1.5-flash"]
-
-            for tag, score in playlists_lite.items():
-                tag_scores[tag.strip()] += score * weights["gemini-2.0-flash-lite"]
-
-            for tag, score in playlists_2_0.items():
-                tag_scores[tag.strip()] += score * weights["gemini-2.0-flash"]
-
-            # Sort tags by final score (optional)
-            sorted_tags = sorted(tag_scores.items(), key=lambda x: x[1], reverse=True)
-
-            # Select only those with final score >= threshold
-            final_tags = [tag for tag, score in sorted_tags if score >= threshold]
-
-            result.append(
-                {
-                    "track_id": track_id,
-                    "track": track,
-                    "gemini-1.5-flash-playlists": playlists_1_5,
-                    "gemini-2.0-flash-lite-playlists": playlists_lite,
-                    "gemini-2.0-flash-playlists": playlists_2_0,
-                    "ensemble_scores": dict(tag_scores),
-                    "final_ensemble_playlists": final_tags,
-                    "ensemble_weights": weights,
-                    "threshold": threshold,
-                }
-            )
-
-    return result
