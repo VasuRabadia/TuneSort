@@ -31,6 +31,8 @@ def get_playlist_tracks(playlist_id):
                 response.status_code,
             )
 
+        # print("Spotify raw response:", response.json())
+
         data = response.json()
         all_tracks.extend(data.get("items", []))
         url = data.get("next")
@@ -40,14 +42,15 @@ def get_playlist_tracks(playlist_id):
     for item in all_tracks:
         track = item.get("track")
         if track:
-            track_id = track.get("id")
             track_info.append(
                 {
                     "name": track.get("name"),
-                    "artist": [a["name"] for a in track.get("artists", [])],
+                    "artist": [artist["name"] for artist in track.get("artists", [])],
                     "id": track.get("id"),
                     "url": track.get("external_urls", {}).get("spotify"),
                 }
             )
 
-    return jsonify({"tracks": track_info})
+    # print(f"BEFORE_RETURN_TRACK_INFO: {track_info}")
+
+    return jsonify(track_info)

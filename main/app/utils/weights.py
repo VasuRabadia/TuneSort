@@ -12,6 +12,8 @@ def build_matrix(parsed_results, all_keys):
 
 # Calculate MSE between each model and the average of the other two
 def mse(model, other1, other2, num_tracks):
+    if num_tracks == 0:
+        return 0
     total_mse = 0
     for i in range(num_tracks):
         pred = np.array(list(model[i].values()))
