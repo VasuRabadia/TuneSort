@@ -138,6 +138,7 @@ def get_playlists():
                 )
 
         session["output_playlists"] = output_playlists
+        session["name_to_id_map"] = name_to_id_map
 
         tracks = []
         for pl in input_playlists:
@@ -147,7 +148,7 @@ def get_playlists():
         seen_ids = set()
         unique_tracks = []
         for track_list in tracks:
-            for track in track_list.get("tracks", []):
+            for track in track_list:
                 track_id = track.get("id")
                 track_name = track.get("name")
                 if track_name and track_id not in seen_ids:

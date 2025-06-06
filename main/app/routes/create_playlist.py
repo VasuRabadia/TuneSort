@@ -1,9 +1,6 @@
-from flask import Blueprint, request, session, jsonify, redirect
-from dotenv import load_dotenv
+from flask import Blueprint, session, jsonify
 import requests
-import os
 
-load_dotenv()
 
 create_playlist_bp = Blueprint("create_playlist", __name__)
 

@@ -23,35 +23,35 @@ except Exception as e:
 
 
 def insert_update_entry(entry):
-    id_exists = bool(collection.find_one({"track_id": entry["track_id"]}))
+    id_exists = bool(collection.find_one({"tr_id": entry["tr_id"]}))
     if id_exists:
-        update_entry(entry["track_id"], entry)
+        update_entry(entry["tr_id"], entry)
         return
     timestamp = datetime.now(timezone.utc)
-    entry["time_created"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+    entry["tc"] = timestamp.strftime("%Y-%m-%d")
     collection.insert_one(entry)
 
 
-def update_entry(track_id, updates):
-    entry = collection.find_one({"track_id": track_id})
+def update_entry(tr_id, updates):
+    entry = collection.find_one({"tr_id": tr_id})
 
-    if "prompted_playlists" in updates:
-        existing = set(entry.get("prompted_playlists", []))
-        new = set(updates["prompted_playlists"])
-        updates["prompted_playlists"] = list(existing.union(new))
+    if "p" in updates:
+        existing = set(entry.get("p", []))
+        new = set(updates["p"])
+        updates["p"] = list(existing.union(new))
 
-    if "final_playlists" in updates:
-        existing = set(entry.get("final_playlists", []))
-        new = set(updates["final_playlists"])
-        updates["final_playlists"] = list(existing.union(new))
+    if "f" in updates:
+        existing = set(entry.get("f", []))
+        new = set(updates["f"])
+        updates["f"] = list(existing.union(new))
 
     timestamp = datetime.now(timezone.utc)
-    updates["time_updated"] = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-    collection.update_one({"track_id": track_id}, {"$set": updates})
+    updates["tu"] = timestamp.strftime("%Y-%m-%d")
+    collection.update_one({"tr_id": tr_id}, {"$set": updates})
 
 
-def get_entry_by_track_id(track_id):
-    entry = collection.find_one({"track_id": track_id}, {"_id": 0})
+def get_entry_by_track_id(tr_id):
+    entry = collection.find_one({"tr_id": tr_id}, {"_id": 0})
     return entry
 
 
@@ -63,10 +63,9 @@ def get_all_entries(limit=10):
 if __name__ == "__main__":
     # Example usage
     sample_entry = {
-        "track_id": "12345",
-        "name": "Track by Artist",
-        "prompted_playlists": ["playlist1", "playlist2"],
-        "final_playlists": ["final_playlist1"],
+        "tr_id": "12345",
+        "p": ["playlist1", "playlist2"],
+        "f": ["final_playlist1"],
     }
     insert_update_entry(sample_entry)
 

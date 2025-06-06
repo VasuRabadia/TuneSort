@@ -1,8 +1,10 @@
-from flask import Blueprint, session, jsonify
+from flask import Blueprint, session, jsonify, request
 from dotenv import load_dotenv
 import os
 import google.generativeai as genai
+import requests
 import time
+from collections import defaultdict
 
 from app.db.mongo import insert_update_entry, get_all_entries, get_entry_by_track_id
 from app.utils.dummy_response import DummyResponse
@@ -76,6 +78,7 @@ def sort_tracks():
     result_1_5_flash = []
     result_2_0_flash_lite = []
     result_2_0_flash = []
+    track_final = {}
     for tr in unique_tracks:
         track_name = tr["name"]
 
@@ -86,104 +89,129 @@ def sort_tracks():
             entry = get_entry_by_track_id(track_id)
             if entry:
                 # print(f"ENTRY: {entry}")
-                for pl in entry.get("final_playlists", []):
+                final_playlists = []
+                for pl in entry.get("f", []):
                     if pl in prompt_playlists:
                         prompt_playlists.remove(pl)
+                        final_playlists.append(pl)
+                if final_playlists:
+                    track_final[track_id] = final_playlists
 
             print(f"prompt_playlists: {prompt_playlists}")
 
-            if prompt_playlists != []:
-                track_artists = tr["artist"]
-                track = track_name + " by " + ", ".join(track_artists)
+            DEBUG = False
+            if not DEBUG:
+                if prompt_playlists != []:
+                    track_artists = tr["artist"]
+                    track = track_name + " by " + ", ".join(track_artists)
 
-                print({"track_id": track_id, "track": track})
-                # print(f"prompt_playlists: {prompt_playlists}")
-                prompt = (
-                    f"You are an expert music classifier.\n\n"
-                    f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {prompt_playlists}.\n\n'
-                    f"Instructions:\n"
-                    f'1. Each playlist name may include genre (e.g., "Pop", "HipHop"), mood (e.g., "Sad", "Happy", "Emotional"), language (e.g., "English", "Hindi", "Punjabi"), or context (e.g., "Party", "Car", "Workout", "Gaming").\n'
-                    f'2. Some playlists have compound names (e.g., "Hindi-Party", "Sad-Car", "English-Dance"). These mean the song must satisfy **all parts** of the name. For example:\n'
-                    f'   - "Hindi-Party" means the song must be **both in Hindi** and **suitable for parties**.\n'
-                    f'   - "Sad-Car" means the song must be **sad** and **appropriate to play in a car**.\n'
-                    f"3. Use your best understanding of the song’s genre, mood, lyrics, language, popularity, and energy.\n"
-                    f"4. For each playlist, indicate how confident the AI model is that the song is a fit for that playlist, as a score between 0 and 1 (1 means very confident, 0 means not confident at all).\n"
-                    f"5. Return only a valid **JSON-style dictionary** (in plain text) with playlist names as keys and confidence levels as float values.\n"
-                    f"6. If the song does not belong in any playlist, return an empty dictionary: {{}}.\n\n"
-                    f"Do NOT include any explanation, markdown, code block, or extra text.\n"
-                    f"Do NOT wrap the output in ```json or ```python.\n"
-                    f'Just return a raw dictionary string like this: {{"Pop": 0.957135842, "Romantic": 0.774135984, "English-Dance": 1.000000000}}'
-                )
-
-                start_time = time.time()  # Start timer
-                try:
-                    response_1_5_flash = model_1_5_flash.generate_content(prompt)
-                except Exception as e:
-                    print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
-                    response_1_5_flash = DummyResponse()
-
-                try:
-                    response_2_0_flash_lite = model_2_0_flash_lite.generate_content(
-                        prompt
+                    print({"track_id": track_id, "track": track})
+                    # print(f"prompt_playlists: {prompt_playlists}")
+                    prompt = (
+                        f"You are an expert music classifier.\n\n"
+                        f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {prompt_playlists}.\n\n'
+                        f"Instructions:\n"
+                        f'1. Each playlist name may include genre (e.g., "Pop", "HipHop"), mood (e.g., "Sad", "Happy", "Emotional"), language (e.g., "English", "Hindi", "Punjabi"), or context (e.g., "Party", "Car", "Workout", "Gaming").\n'
+                        f'2. Some playlists have compound names (e.g., "Hindi-Party", "Sad-Car", "English-Dance"). These mean the song must satisfy **all parts** of the name. For example:\n'
+                        f'   - "Hindi-Party" means the song must be **both in Hindi** and **suitable for parties**.\n'
+                        f'   - "Sad-Car" means the song must be **sad** and **appropriate to play in a car**.\n'
+                        f"3. Use your best understanding of the song’s genre, mood, lyrics, language, popularity, and energy.\n"
+                        f"4. For each playlist, indicate how confident the AI model is that the song is a fit for that playlist, as a score between 0 and 1 (1 means very confident, 0 means not confident at all).\n"
+                        f"5. Return only a valid **JSON-style dictionary** (in plain text) with playlist names as keys and confidence levels as float values.\n"
+                        f"6. If the song does not belong in any playlist, return an empty dictionary: {{}}.\n\n"
+                        f"Do NOT include any explanation, markdown, code block, or extra text.\n"
+                        f"Do NOT wrap the output in ```json or ```python.\n"
+                        f'Just return a raw dictionary string like this: {{"Pop": 0.957135842, "Romantic": 0.774135984, "English-Dance": 1.000000000}}'
                     )
-                except Exception as e:
-                    print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
-                    response_2_0_flash_lite = DummyResponse()
 
-                try:
-                    response_2_0_flash = model_2_0_flash.generate_content(prompt)
-                except Exception as e:
-                    print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
-                    response_2_0_flash = DummyResponse()
+                    start_time = time.time()  # Start timer
+                    try:
+                        response_1_5_flash = model_1_5_flash.generate_content(prompt)
+                    except Exception as e:
+                        print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
+                        response_1_5_flash = DummyResponse()
 
-                result_1_5_flash.append(
-                    {
-                        "track_id": track_id,
-                        "track": track,
-                        "playlist": response_1_5_flash.candidates[0]
-                        .content.parts[0]
-                        .text,
-                    }
-                )
-                result_2_0_flash_lite.append(
-                    {
-                        "track_id": track_id,
-                        "track": track,
-                        "playlist": response_2_0_flash_lite.candidates[0]
-                        .content.parts[0]
-                        .text,
-                    }
-                )
-                result_2_0_flash.append(
-                    {
-                        "track_id": track_id,
-                        "track": track,
-                        "playlist": response_2_0_flash.candidates[0]
-                        .content.parts[0]
-                        .text,
-                    }
-                )
+                    try:
+                        response_2_0_flash_lite = model_2_0_flash_lite.generate_content(
+                            prompt
+                        )
+                    except Exception as e:
+                        print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
+                        response_2_0_flash_lite = DummyResponse()
 
-                end_time = time.time()  # End timer
-                duration = end_time - start_time
-                print(duration)
-                if duration < 4:
-                    time.sleep(4 - duration)
+                    try:
+                        response_2_0_flash = model_2_0_flash.generate_content(prompt)
+                    except Exception as e:
+                        print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
+                        response_2_0_flash = DummyResponse()
+
+                    result_1_5_flash.append(
+                        {
+                            "track_id": track_id,
+                            "track": track,
+                            "playlist": response_1_5_flash.candidates[0]
+                            .content.parts[0]
+                            .text,
+                        }
+                    )
+                    result_2_0_flash_lite.append(
+                        {
+                            "track_id": track_id,
+                            "track": track,
+                            "playlist": response_2_0_flash_lite.candidates[0]
+                            .content.parts[0]
+                            .text,
+                        }
+                    )
+                    result_2_0_flash.append(
+                        {
+                            "track_id": track_id,
+                            "track": track,
+                            "playlist": response_2_0_flash.candidates[0]
+                            .content.parts[0]
+                            .text,
+                        }
+                    )
+
+                    end_time = time.time()  # End timer
+                    duration = end_time - start_time
+                    print(duration)
+                    if duration < 4:
+                        time.sleep(4 - duration)
 
     weighted_result = compute_weighted_result(
         result_1_5_flash, result_2_0_flash_lite, result_2_0_flash
     )
 
     # return jsonify({"weighted_result": weighted_result})
+    playlist_to_tracks = defaultdict(list)
+    name_to_id_map = session.get("name_to_id_map", {})
 
     for entry in weighted_result:
         db_entry = {
-            "track_id": entry["track_id"],
-            "track": entry["track"],
-            "prompted_playlists": playlists,
-            "final_playlists": entry["final_ensemble_playlists"],
+            "tr_id": entry["track_id"],
+            "p": playlists,
+            "f": entry["final_ensemble_playlists"],
         }
         insert_update_entry(db_entry)
+        track_id = entry["track_id"]
+        track_final_playlists = (
+            track_final.get(track_id, []) + entry["final_ensemble_playlists"]
+        )
+        for pl in track_final_playlists:
+            pl_id = name_to_id_map.get(pl)
+            # print(f"pl: {pl}, pl_id: {pl_id}")
+            playlist_to_tracks[pl_id].append(track_id)
+
+    for pl_id, track_ids in playlist_to_tracks.items():
+        payload = {"track_ids": track_ids}
+        # print(f"pl_id: {pl_id}, track_ids: {track_ids}")
+        response = requests.post(
+            request.host_url + f"add_tracks/{pl_id}",
+            json=payload,
+            cookies=request.cookies,
+        )
+        # return jsonify(response.json())
 
     entries_list = list(get_all_entries(limit=20))
     return jsonify(entries_list)
