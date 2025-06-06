@@ -1,4 +1,4 @@
-from flask import Blueprint, session, jsonify, request
+from flask import Blueprint, session, jsonify
 import requests
 
 tracks_bp = Blueprint("playlist_tracks", __name__)
