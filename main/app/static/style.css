@@ -182,21 +182,21 @@ img {
 .animated-gradient-btn {
   background: var(--gradient-colors);
   background-size: 200% 200%;
-  color: white;
+  color: black;
   border: none;
   padding: 12px 24px;
   font-size: 1rem;
   border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform 1s ease;
 }
 
 .animated-gradient-btn:hover {
   transform: scale(1.05);
-  animation: gradient-move 3s ease-in-out infinite;
+  animation: gradient-move 10s ease-in-out infinite;
 }
 
-@keyframes gradient-move {
+/* @keyframes gradient-move {
   0% {
     background-position: 0% 0%;
   }
@@ -211,5 +211,35 @@ img {
   }
   100% {
     background-position: 0% 0%;
+  }
+} */
+
+@keyframes gradient-move {
+  0% {
+    background-position: 100% 50%;
+  }
+  12.5% {
+    background-position: 85.35% 85.35%;
+  }
+  25% {
+    background-position: 50% 100%;
+  }
+  37.5% {
+    background-position: 14.65% 85.35%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  62.5% {
+    background-position: 14.65% 14.65%;
+  }
+  75% {
+    background-position: 50% 0%;
+  }
+  87.5% {
+    background-position: 85.35% 14.65%;
+  }
+  100% {
+    background-position: 100% 50%;
   }
 }
