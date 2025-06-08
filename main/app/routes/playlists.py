@@ -142,7 +142,7 @@ def get_playlists():
 
         tracks = []
         for pl in input_playlists:
-            playlist_url = request.host_url + f"playlist/{pl["id"]}/tracks"
+            playlist_url = request.host_url + f"playlist/{pl['id']}/tracks"
             tracks.append(requests.get(playlist_url, cookies=request.cookies).json())
 
         seen_ids = set()
