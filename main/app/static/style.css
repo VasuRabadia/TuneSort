@@ -45,6 +45,21 @@ body {
   color: #000000;
 }
 
+a {
+  text-decoration: none;
+  color: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+}
+
+a:hover {
+  text-decoration: none;
+  color: inherit;
+}
+
 p {
   margin-bottom: 0px;
 }
@@ -162,6 +177,23 @@ img {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: gradient-move 5s ease-in-out infinite;
+}
+
+.animated-gradient-btn {
+  background: var(--gradient-colors);
+  background-size: 200% 200%;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.animated-gradient-btn:hover {
+  transform: scale(1.05);
+  animation: gradient-move 3s ease-in-out infinite;
 }
 
 @keyframes gradient-move {

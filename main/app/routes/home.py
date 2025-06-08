@@ -1,6 +1,7 @@
-from flask import Blueprint, request, session, jsonify, redirect
+from flask import Blueprint, request, session, jsonify, render_template
 from dotenv import load_dotenv
 import requests
+from requests.auth import HTTPBasicAuth
 import os
 
 load_dotenv()
@@ -23,17 +24,35 @@ def callback():
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": REDIRECT_URI,
-            "client_id": CLIENT_ID,
-            "client_secret": CLIENT_SECRET,
         },
+        auth=HTTPBasicAuth(CLIENT_ID, CLIENT_SECRET),
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
 
     if token_response.status_code != 200:
-        return jsonify({"error": "Failed to get access token"}), 400
+        return (
+            jsonify(
+                {
+                    "error": "Failed to get access token",
+                    "status_code": token_response.status_code,
+                    "spotify_response": token_response.json(),
+                }
+            ),
+            400,
+        )
 
     tokens = token_response.json()
 
     # Store access token in session
     session["access_token"] = tokens.get("access_token")
 
-    return redirect("/playlists")
+    return render_template(
+        "home.html",
+        access_token=session["access_token"],
+        client_id=CLIENT_ID,
+        redirect_uri=REDIRECT_URI,
+        token_type=tokens.get("token_type"),
+        expires_in=tokens.get("expires_in"),
+        scope=tokens.get("scope"),
+        refresh_token=tokens.get("refresh_token"),
+    )
