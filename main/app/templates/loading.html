@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sorting Tracks...</title>
+    <!-- CUSTOM CSS -->
+    <link rel="stylesheet" href="../static/loading_style.css" />
+  </head>
+  <body>
+    <h1>Sorting your music...</h1>
+
+    <div id="progress-container">
+      <div id="progress-bar">0%</div>
+    </div>
+
+    <div id="current-track">Waiting to start...</div>
+
+    <script>
+      async function fetchProgress() {
+        try {
+          const response = await fetch("/progress");
+          if (!response.ok) throw new Error("Network response was not ok");
+          const data = await response.json();
+
+          const { sorted, total, current_track } = data;
+          const percent = total === 0 ? 0 : Math.floor((sorted / total) * 100);
+
+          const progressBar = document.getElementById("progress-bar");
+          progressBar.style.width = percent + "%";
+          //   progressBar.style.width = 50 + "%";
+          progressBar.textContent = percent + "%";
+
+          const currentTrackEl = document.getElementById("current-track");
+          currentTrackEl.textContent = current_track
+            ? `Currently sorting: ${current_track}`
+            : "Starting...";
+
+          if (percent < 100) {
+            setTimeout(fetchProgress, 1000); // poll every second
+          } else {
+            currentTrackEl.textContent = "Sorting complete!";
+            // Redirect or do something here after done
+            // window.location.href = "/done";
+          }
+        } catch (error) {
+          console.error("Error fetching progress:", error);
+          setTimeout(fetchProgress, 3000); // retry after 3 seconds if error
+        }
+      }
+
+      fetchProgress();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,91 @@
+:root {
+  --gradient-angle: 0deg;
+  --gradient-colors: linear-gradient(
+    var(--gradient-angle),
+    #5409da,
+    #4e71ff,
+    #8dd8ff,
+    #bbfbff
+  );
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  text-align: center;
+  margin-top: 10%;
+  background: #121212;
+  color: #eee;
+}
+
+#progress-container {
+  width: 60%;
+  height: 40px;
+  background: #333;
+  border-radius: 20px;
+  margin: 20px auto;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 10px #000;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--gradient-colors);
+  background-size: 200% 200%;
+  border-radius: 20px 0 0 20px;
+  color: white;
+  font-weight: bold;
+  line-height: 40px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.2s ease, width 1s ease;
+  animation: gradient-move 10s ease-in-out infinite;
+}
+
+@keyframes gradient-move {
+  0% {
+    background-position: 100% 50%;
+  }
+  12.5% {
+    background-position: 85.35% 85.35%;
+  }
+  25% {
+    background-position: 50% 100%;
+  }
+  37.5% {
+    background-position: 14.65% 85.35%;
+  }
+  50% {
+    background-position: 0% 50%;
+  }
+  62.5% {
+    background-position: 14.65% 14.65%;
+  }
+  75% {
+    background-position: 50% 0%;
+  }
+  87.5% {
+    background-position: 85.35% 14.65%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+#current-track {
+  margin-top: 30px;
+  font-size: 1.2rem;
+  font-style: italic;
+  max-width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  word-wrap: break-word;
+}
