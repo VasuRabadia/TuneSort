@@ -1,13 +1,6 @@
 :root {
   --ls: clamp(-1.75px, -0.25vw, -3.5px);
   --gradient-angle: 0deg;
-  /* --gradient-colors: linear-gradient(
-    var(--gradient-angle),
-    #000000,
-    #3d0000,
-    #950101,
-    #ff0000
-  ); */
   --gradient-colors: linear-gradient(
     var(--gradient-angle),
     #5409da,
@@ -17,17 +10,17 @@
   );
   --hover-gradient: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(187, 251, 255, 0.25) 25%,
-    rgba(141, 216, 255, 0.5) 50%,
+    rgba(78, 113, 255, 0) 0%,
+    rgba(78, 113, 255, 0.25) 25%,
+    rgba(78, 113, 255, 0.5) 50%,
     rgba(78, 113, 255, 0.75) 75%
   );
   --background-gradient: linear-gradient(
     var(--gradient-angle),
-    #c4dfdf,
-    #d2e9e9,
-    #e3f4f4,
-    #f8f6f4
+    #0b1224 0%,
+    #141a3d 40%,
+    #1f2a58 70%,
+    #0a0c14 100%
   );
 }
 
@@ -38,11 +31,11 @@
 }
 
 body {
-  height: 100%;
+  min-height: 100vh;
   width: 100%;
   /* overflow: hidden; */
   background: var(--background-gradient);
-  color: #000000;
+  color: #ffffff;
 }
 
 a {
@@ -188,31 +181,48 @@ img {
   font-size: 1rem;
   border-radius: 8px;
   cursor: pointer;
-  transition: transform 1s ease;
+  transition: transform 0.5s ease;
 }
 
 .animated-gradient-btn:hover {
   transform: scale(1.05);
+  animation: gradient-move 5s ease-in-out infinite;
+}
+
+.progress-container {
+  width: 60%;
+  height: 40px;
+  background: #333333;
+  border-radius: 20px;
+  margin: 20px auto;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 0 10px #000000;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--gradient-colors);
+  background-size: 200% 200%;
+  border-radius: 20px 0 0 20px;
+  position: relative;
+  transition: width 1s ease;
   animation: gradient-move 10s ease-in-out infinite;
 }
 
-/* @keyframes gradient-move {
-  0% {
-    background-position: 0% 0%;
-  }
-  25% {
-    background-position: 100% 50%;
-  }
-  50% {
-    background-position: 50% 100%;
-  }
-  75% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 0% 0%;
-  }
-} */
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: bold;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+}
 
 @keyframes gradient-move {
   0% {
@@ -242,4 +252,31 @@ img {
   100% {
     background-position: 100% 50%;
   }
+}
+
+/* SCROLLBAR STYLE */
+/* For WebKit (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #bbfbff;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0b1224;
+  border-radius: 10px;
+  border: 2px solid #1f2a58;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #5409da;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #0b1224 #1f2a58;
 }

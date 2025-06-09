@@ -1,14 +1,16 @@
-from flask import Blueprint, session, jsonify, request
+from flask import Blueprint, session, jsonify, request, render_template
 from dotenv import load_dotenv
 import os
 import google.generativeai as genai
 import requests
 import time
+from threading import Thread
 from collections import defaultdict
 
-from app.db.mongo import insert_update_entry, get_all_entries, get_entry_by_track_id
+from app.db.mongo import insert_update_entry, get_entry_by_track_id
 from app.utils.dummy_response import DummyResponse
 from app.utils.compute_weighted_result import compute_weighted_result
+from app.routes.progress import update_progress
 
 
 load_dotenv()
@@ -22,67 +24,61 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-# models = genai.list_models()
-# models_json = []
-# for model in models:
-#     print(model.name)
-#     model_info = {
-#         "name": model.name,
-#         "base_model_id": getattr(model, "base_model_id", None),
-#         "version": getattr(model, "version", None),
-#         "display_name": getattr(model, "display_name", None),
-#         "description": getattr(model, "description", None),
-#         "input_token_limit": getattr(model, "input_token_limit", None),
-#         "output_token_limit": getattr(model, "output_token_limit", None),
-#         "supported_generation_methods": getattr(
-#             model, "supported_generation_methods", []
-#         ),
-#         "temperature": getattr(model, "temperature", None),
-#         "max_temperature": getattr(model, "max_temperature", None),
-#         "top_p": getattr(model, "top_p", None),
-#         "top_k": getattr(model, "top_k", None),
-#     }
-#     models_json.append(model_info)
-# with open("main/data/models.json", "w") as f:
-#     json.dump(models_json, f)
-# models_name = []
-# with open("main/data/models_name.json", "w") as f:
-#     for model in models_json:
-#         models_name.append(model["name"])
-#     json.dump(models_name, f)
-
 model_1_5_flash = genai.GenerativeModel("gemini-1.5-flash")
 model_2_0_flash_lite = genai.GenerativeModel("gemini-2.0-flash-lite")
 model_2_0_flash = genai.GenerativeModel("gemini-2.0-flash")
 
 
-@sort_bp.route("/sort", methods=["GET", "POST"])
-def sort_tracks():
-    access_token = session.get("access_token")
+@sort_bp.route("/sort", methods=["GET"])
+def sort_page():
+    session_data = {
+        "access_token": session.get("access_token"),
+        "unique_tracks": session.get("unique_tracks"),
+        "output_playlists": session.get("output_playlists"),
+        "playlist_map": session.get("playlist_map"),
+        "name_to_id_map": session.get("name_to_id_map"),
+    }
+    Thread(
+        target=run_sorting_process,
+        args=(session_data, request.host_url, request.cookies),
+    ).start()
+    return render_template("loading.html")
+
+
+def run_sorting_process(session_data, host_url, cookies):
+    access_token = session_data.get("access_token")
     if not access_token:
         return (
             jsonify({"error": "Access token not found. Authorize first via /home"}),
             401,
         )
 
-    unique_tracks = session.get("unique_tracks")
-    output_playlists = session.get("output_playlists")
-    playlist_map = session.get("playlist_map")
-    # print(playlist_map)
-    # playlists = [playlist_map[pid] for pid in output_playlists if pid in playlist_map]
+    unique_tracks = session_data.get("unique_tracks")
+    total_tracks = len(unique_tracks)
+    output_playlists = session_data.get("output_playlists")
+    playlist_map = session_data.get("playlist_map")
+    name_to_id_map = session_data.get("name_to_id_map", {})
+
     playlists = [
         playlist_map[pid["id"]] for pid in output_playlists if pid["id"] in playlist_map
     ]
-    # print(f"Playlists: {playlists}")
 
     result_1_5_flash = []
     result_2_0_flash_lite = []
     result_2_0_flash = []
     track_final = {}
+    sorted_tracks = 0
+
     for tr in unique_tracks:
         track_name = tr["name"]
 
         if track_name != "":
+            update_progress(
+                sorted=sorted_tracks,
+                total=total_tracks,
+                current_track=track_name,
+                phase="Sorting Tracks",
+            )
             track_id = tr["id"]
             prompt_playlists = playlists.copy()
 
@@ -97,7 +93,7 @@ def sort_tracks():
                 if final_playlists:
                     track_final[track_id] = final_playlists
 
-            print(f"prompt_playlists: {prompt_playlists}")
+            # print(f"prompt_playlists: {prompt_playlists}")
 
             DEBUG = False
             if not DEBUG:
@@ -105,7 +101,7 @@ def sort_tracks():
                     track_artists = tr["artist"]
                     track = track_name + " by " + ", ".join(track_artists)
 
-                    print({"track_id": track_id, "track": track})
+                    # print({"track_id": track_id, "track": track})
                     # print(f"prompt_playlists: {prompt_playlists}")
                     prompt = (
                         f"You are an expert music classifier.\n\n"
@@ -175,9 +171,17 @@ def sort_tracks():
 
                     end_time = time.time()  # End timer
                     duration = end_time - start_time
-                    print(duration)
+                    # print(duration)
                     if duration < 4:
                         time.sleep(4 - duration)
+        sorted_tracks += 1
+
+    update_progress(
+        sorted=sorted_tracks,
+        total=total_tracks,
+        current_track=track_name,
+        phase="Evluating Results",
+    )
 
     weighted_result = compute_weighted_result(
         result_1_5_flash, result_2_0_flash_lite, result_2_0_flash
@@ -185,7 +189,6 @@ def sort_tracks():
 
     # return jsonify({"weighted_result": weighted_result})
     playlist_to_tracks = defaultdict(list)
-    name_to_id_map = session.get("name_to_id_map", {})
 
     for entry in weighted_result:
         db_entry = {
@@ -203,15 +206,27 @@ def sort_tracks():
             # print(f"pl: {pl}, pl_id: {pl_id}")
             playlist_to_tracks[pl_id].append(track_id)
 
+    update_progress(
+        sorted=sorted_tracks,
+        total=total_tracks,
+        current_track=track_name,
+        phase="Adding Tracks to Playlists",
+    )
+
     for pl_id, track_ids in playlist_to_tracks.items():
         payload = {"track_ids": track_ids}
         # print(f"pl_id: {pl_id}, track_ids: {track_ids}")
         response = requests.post(
-            request.host_url + f"add_tracks/{pl_id}",
+            host_url + f"add_tracks/{pl_id}",
             json=payload,
-            cookies=request.cookies,
+            cookies=cookies,
         )
         # return jsonify(response.json())
 
-    entries_list = list(get_all_entries(limit=20))
-    return jsonify(entries_list)
+    playlist_urls = {}
+    for pl_id in playlist_to_tracks:
+        playlist_name = playlist_map.get(pl_id)
+        if playlist_name:
+            playlist_urls[playlist_name] = f"https://open.spotify.com/playlist/{pl_id}"
+
+    return

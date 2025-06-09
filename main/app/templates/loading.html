@@ -4,17 +4,34 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sorting Tracks...</title>
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+      crossorigin="anonymous"
+    />
     <!-- CUSTOM CSS -->
-    <link rel="stylesheet" href="../static/loading_style.css" />
+    <link rel="stylesheet" href="../static/style.css" />
   </head>
   <body>
-    <h1>Sorting your music...</h1>
+    <div class="container">
+      <div class="content my-5 animated-gradient">
+        <div
+          id="loading-phase"
+          class="title display-1 fw-bolder my-2 py-2 mx-auto"
+        >
+          Sorting your music...
+        </div>
+      </div>
 
-    <div id="progress-container">
-      <div id="progress-bar">0%</div>
+      <div class="progress-container">
+        <div class="progress-bar"></div>
+        <div class="progress-text">0%</div>
+      </div>
+
+      <div id="current-track">Waiting to start...</div>
     </div>
-
-    <div id="current-track">Waiting to start...</div>
 
     <script>
       async function fetchProgress() {
@@ -23,29 +40,51 @@
           if (!response.ok) throw new Error("Network response was not ok");
           const data = await response.json();
 
-          const { sorted, total, current_track } = data;
-          const percent = total === 0 ? 0 : Math.floor((sorted / total) * 100);
+          const { sorted, total, current_track, phase } = data;
+
+          let percent = 0;
+
+          if (phase === "Sorting Tracks") {
+            percent = total === 0 ? 0 : Math.floor((sorted / total) * 98);
+          } else if (phase === "Evaluating Results") {
+            percent = 99;
+          } else if (phase === "Adding Tracks to Playlists") {
+            percent = 100;
+          }
 
           const progressBar = document.getElementById("progress-bar");
           progressBar.style.width = percent + "%";
-          //   progressBar.style.width = 50 + "%";
-          progressBar.textContent = percent + "%";
 
+          // Update center percentage text
+          const progressText = document.querySelector(".progress-text");
+          if (progressText) progressText.textContent = percent + "%";
+
+          // Update current track info
           const currentTrackEl = document.getElementById("current-track");
-          currentTrackEl.textContent = current_track
-            ? `Currently sorting: ${current_track}`
-            : "Starting...";
+          currentTrackEl.textContent =
+            current_track && phase === "Sorting Tracks"
+              ? `Currently sorting: ${current_track}`
+              : phase === "Evaluating Results"
+              ? "Evaluating results..."
+              : phase === "Adding Tracks to Playlists"
+              ? "Adding tracks to playlists..."
+              : "Starting...";
+
+          // Update phase label
+          const phaseEl = document.getElementById("loading-phase");
+          if (phaseEl && phase) {
+            phaseEl.textContent = phase + "...";
+          }
 
           if (percent < 100) {
-            setTimeout(fetchProgress, 1000); // poll every second
+            setTimeout(fetchProgress, 1000);
           } else {
             currentTrackEl.textContent = "Sorting complete!";
-            // Redirect or do something here after done
-            // window.location.href = "/done";
+            window.location.href = "/success";
           }
         } catch (error) {
           console.error("Error fetching progress:", error);
-          setTimeout(fetchProgress, 3000); // retry after 3 seconds if error
+          setTimeout(fetchProgress, 3000);
         }
       }
 
