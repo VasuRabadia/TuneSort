@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Success</title>
+    <!-- Bootstrap 5 CSS -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+      crossorigin="anonymous"
+    />
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../static/style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="content my-5 animated-gradient">
+        <div class="title display-1 fw-bolder">Success</div>
+      </div>
+      <div class="description fs-2 my-3">
+        <p>Your tracks have been sorted into the right playlists</p>
+      </div>
+      <a href="/">
+        <div class="d-grid gap-2 mx-0 my-2">
+          <button class="btn btn-lg animated-gradient-btn fw-bolder fs-5">
+            Back to Home
+          </button>
+        </div>
+      </a>
+      {% if playlist_urls %}
+      <div class="title display-5 fw-bolder">View Playlists</div>
+      <div class="row justify-content-center">
+        {% for name, url in playlist_urls.items() %}
+        <div class="col-md-6 col-lg-4 my-2">
+          <a
+            href="{{ url }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-decoration-none"
+          >
+            <div class="btn btn-lg w-100 animated-gradient-btn fw-bolder fs-6">
+              {{ name }}
+            </div>
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>

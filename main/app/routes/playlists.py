@@ -161,4 +161,4 @@ def get_playlists():
         return redirect("/sort")
         # return redirect(f"/playlist/{selected_input[0]}/tracks")
     else:
-        return render_template("index.html", playlists=playlists)
+        return render_template("playlists.html", playlists=playlists)
