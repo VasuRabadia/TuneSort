@@ -6,6 +6,8 @@ import requests
 import time
 from threading import Thread
 from collections import defaultdict
+import tracemalloc
+
 
 from app.db.mongo import insert_update_entry, get_entry_by_track_id
 from app.utils.dummy_response import DummyResponse
@@ -46,6 +48,7 @@ def sort_page():
 
 
 def run_sorting_process(session_data, host_url, cookies):
+    tracemalloc.start()
     access_token = session_data.get("access_token")
     if not access_token:
         return (
@@ -175,6 +178,11 @@ def run_sorting_process(session_data, host_url, cookies):
                     if duration < 4:
                         time.sleep(4 - duration)
         sorted_tracks += 1
+        # print(tracemalloc.get_traced_memory())
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"Current memory usage: {current / 1024 / 1024:.2f} MB")
+        print(f"Peak memory usage: {peak / 1024 / 1024:.2f} MB")
+    tracemalloc.stop()
 
     update_progress(
         sorted=sorted_tracks,

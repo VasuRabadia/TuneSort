@@ -10,9 +10,11 @@ success_bp = Blueprint("success", __name__)
 def success():
     output_playlists = session.get("output_playlists")
     name_to_id_map = session.get("name_to_id_map")
+    print(f"name_to_id_map: {name_to_id_map}, type: {type(name_to_id_map)}")
     playlist_urls = {}
     for pl in output_playlists:
-        playlist_id = name_to_id_map[pl]
-        playlist_urls[pl] = f"https://open.spotify.com/playlist/{playlist_id}"
+        print(f"Processing playlist: {pl}")
+        playlist_id = name_to_id_map.get(pl["name"])
+        playlist_urls[pl["name"]] = f"https://open.spotify.com/playlist/{playlist_id}"
 
     return render_template("success.html", playlist_urls=playlist_urls)
