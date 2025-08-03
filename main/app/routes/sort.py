@@ -104,8 +104,8 @@ def run_sorting_process(session_data, host_url, cookies):
                     track_artists = tr["artist"]
                     track = track_name + " by " + ", ".join(track_artists)
 
-                    # print({"track_id": track_id, "track": track})
-                    # print(f"prompt_playlists: {prompt_playlists}")
+                    print({"track_id": track_id, "track": track})
+                    print(f"prompt_playlists: {prompt_playlists}")
                     prompt = (
                         f"You are an expert music classifier.\n\n"
                         f'Task: Classify the song "{track}" into one or more of the following user-defined playlists: {prompt_playlists}.\n\n'
@@ -123,60 +123,68 @@ def run_sorting_process(session_data, host_url, cookies):
                         f'Just return a raw dictionary string like this: {{"Pop": 0.957135842, "Romantic": 0.774135984, "English-Dance": 1.000000000}}'
                     )
 
+                    skip_track = False
                     start_time = time.time()  # Start timer
                     try:
+                        # print("1.5-flash model")
                         response_1_5_flash = model_1_5_flash.generate_content(prompt)
                     except Exception as e:
                         print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
                         response_1_5_flash = DummyResponse()
+                        skip_track = True
 
                     try:
+                        # print("2.0-flash-lite model")
                         response_2_0_flash_lite = model_2_0_flash_lite.generate_content(
                             prompt
                         )
                     except Exception as e:
                         print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
                         response_2_0_flash_lite = DummyResponse()
+                        skip_track = True
 
                     try:
+                        # print("2.0-flash model")
                         response_2_0_flash = model_2_0_flash.generate_content(prompt)
                     except Exception as e:
                         print(f"Error: {e}\nTrack ID: {track_id}\nTrack: {track}")
                         response_2_0_flash = DummyResponse()
+                        skip_track = True
 
-                    result_1_5_flash.append(
-                        {
-                            "track_id": track_id,
-                            "track": track,
-                            "playlist": response_1_5_flash.candidates[0]
-                            .content.parts[0]
-                            .text,
-                        }
-                    )
-                    result_2_0_flash_lite.append(
-                        {
-                            "track_id": track_id,
-                            "track": track,
-                            "playlist": response_2_0_flash_lite.candidates[0]
-                            .content.parts[0]
-                            .text,
-                        }
-                    )
-                    result_2_0_flash.append(
-                        {
-                            "track_id": track_id,
-                            "track": track,
-                            "playlist": response_2_0_flash.candidates[0]
-                            .content.parts[0]
-                            .text,
-                        }
-                    )
+                    if not skip_track:
+                        result_1_5_flash.append(
+                            {
+                                "track_id": track_id,
+                                "track": track,
+                                "playlist": response_1_5_flash.candidates[0]
+                                .content.parts[0]
+                                .text,
+                            }
+                        )
+                        result_2_0_flash_lite.append(
+                            {
+                                "track_id": track_id,
+                                "track": track,
+                                "playlist": response_2_0_flash_lite.candidates[0]
+                                .content.parts[0]
+                                .text,
+                            }
+                        )
+                        result_2_0_flash.append(
+                            {
+                                "track_id": track_id,
+                                "track": track,
+                                "playlist": response_2_0_flash.candidates[0]
+                                .content.parts[0]
+                                .text,
+                            }
+                        )
 
-                    end_time = time.time()  # End timer
-                    duration = end_time - start_time
-                    # print(duration)
-                    if duration < 4:
-                        time.sleep(4 - duration)
+                        end_time = time.time()  # End timer
+                        duration = end_time - start_time
+                        print(f"Duration: {duration}")
+                        if duration < 4:
+                            time.sleep(4 - duration)
         sorted_tracks += 1
         # print(tracemalloc.get_traced_memory())
         current, peak = tracemalloc.get_traced_memory()
