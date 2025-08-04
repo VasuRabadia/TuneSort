@@ -91,8 +91,10 @@ def run_sorting_process(session_data, host_url, cookies):
                 final_playlists = []
                 for pl in entry.get("f", []):
                     if pl in prompt_playlists:
-                        prompt_playlists.remove(pl)
                         final_playlists.append(pl)
+                for pl in entry.get("p", []):
+                    if pl in prompt_playlists:
+                        prompt_playlists.remove(pl)
                 if final_playlists:
                     track_final[track_id] = final_playlists
 
